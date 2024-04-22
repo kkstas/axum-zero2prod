@@ -1,0 +1,20 @@
+[package]
+name = "axum-z2p"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "axum-z2p"
+path = "src/main.rs"
+
+
+[dependencies]
+anyhow = "1.0.82"
+axum = "0.7.5"
+reqwest = "0.12.4"
+serde = { version = "1.0.198", features = ["derive"] }
+tokio = { version = "1.37.0", features = ["full"] }
