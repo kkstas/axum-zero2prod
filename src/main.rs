@@ -4,5 +4,5 @@ async fn main() {
         .await
         .expect("Failed to bind a listener to a port");
 
-    axum::serve(listener, axum_z2p::run()).await.unwrap();
+    axum::serve(listener, axum_zero2prod::run()).await.unwrap();
 }

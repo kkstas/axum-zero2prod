@@ -62,7 +62,7 @@ async fn spawn_app() -> String {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
     let _ = tokio::spawn(async move {
-        axum::serve(listener, axum_z2p::run()).await.unwrap();
+        axum::serve(listener, axum_zero2prod::run()).await.unwrap();
     });
     format!("http://127.0.0.1:{}", port)
 }
