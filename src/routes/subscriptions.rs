@@ -1,14 +1,38 @@
 use axum::extract::rejection::FormRejection;
+use axum::extract::State;
+use axum::http::StatusCode;
 use axum::response::IntoResponse;
-use axum::{http::StatusCode, Json};
 use axum_macros::FromRequest;
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::json;
+use uuid::Uuid;
+
+use crate::startup::AppState;
 
 pub async fn subscribe(
-    Form(data): Form<SubscribeForm>,
-) -> Result<(StatusCode, Json<Value>), ApiError> {
-    Ok((StatusCode::OK, Json(json!(data))))
+    State(state): State<AppState>,
+    Form(form): Form<SubscribeForm>,
+) -> StatusCode {
+    match sqlx::query!(
+        r#"
+            INSERT INTO subscriptions (id, email, name, subscribed_at)
+            VALUES ($1, $2, $3, $4)
+        "#,
+        Uuid::new_v4(),
+        form.email,
+        form.name,
+        Utc::now()
+    )
+    .execute(&state.db_pool)
+    .await
+    {
+        Ok(_) => StatusCode::OK,
+        Err(e) => {
+            println!("->> Failed to execute query: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        }
+    }
 }
 
 #[derive(Debug)]
