@@ -1,7 +1,3 @@
-pub mod configuration;
-pub mod routes;
-pub mod startup;
-
 use axum::extract::rejection::FormRejection;
 use axum::response::IntoResponse;
 use axum::{http::StatusCode, Json};
@@ -9,28 +5,26 @@ use axum_macros::FromRequest;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
-async fn health_check() -> StatusCode {
-    StatusCode::OK
-}
-
-async fn subscribe(Form(data): Form<SubscribeForm>) -> Result<(StatusCode, Json<Value>), ApiError> {
+pub async fn subscribe(
+    Form(data): Form<SubscribeForm>,
+) -> Result<(StatusCode, Json<Value>), ApiError> {
     Ok((StatusCode::OK, Json(json!(data))))
 }
 
 #[derive(Debug)]
 pub struct ApiError {
-    code: StatusCode,
-    message: String,
+    pub code: StatusCode,
+    pub message: String,
 }
 
 #[derive(FromRequest)]
 #[from_request(via(axum::Form), rejection(ApiError))]
-struct Form<T>(T);
+pub struct Form<T>(T);
 
 #[derive(Deserialize, Serialize)]
-struct SubscribeForm {
-    name: String,
-    email: String,
+pub struct SubscribeForm {
+    pub name: String,
+    pub email: String,
 }
 
 impl From<FormRejection> for ApiError {

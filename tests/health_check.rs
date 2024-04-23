@@ -1,3 +1,5 @@
+use axum_zero2prod::startup::run;
+
 #[tokio::test]
 async fn health_check_works() {
     let addr = spawn_app().await;
@@ -62,7 +64,7 @@ async fn spawn_app() -> String {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
     let _ = tokio::spawn(async move {
-        axum::serve(listener, axum_zero2prod::run()).await.unwrap();
+        axum::serve(listener, run()).await.unwrap();
     });
     format!("http://127.0.0.1:{}", port)
 }
