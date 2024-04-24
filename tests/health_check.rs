@@ -1,6 +1,7 @@
-use axum_zero2prod::configuration::get_configuration;
+use axum_zero2prod::configuration::{get_configuration, DatabaseSettings};
 use axum_zero2prod::startup::run;
-use sqlx::{Connection, PgConnection, PgPool};
+use sqlx::{Connection, Executor, PgConnection, PgPool};
+use uuid::Uuid;
 
 #[tokio::test]
 async fn health_check_works() {
@@ -85,11 +86,9 @@ async fn spawn_app() -> TestApp {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
 
-    let configuration = get_configuration().expect("Failed to read configuration");
-    let connection_string = configuration.database.connection_string();
-    let db_pool = PgPool::connect(&connection_string)
-        .await
-        .expect("Failed to connect to Postgres");
+    let mut configuration = get_configuration().expect("Failed to read configuration");
+    configuration.database.database_name = Uuid::new_v4().to_string();
+    let db_pool = configure_database(&configuration.database).await;
     let spawn_pool = db_pool.clone();
 
     let _ = tokio::spawn(async move {
@@ -99,4 +98,26 @@ async fn spawn_app() -> TestApp {
         address: format!("http://127.0.0.1:{}", port),
         db_pool,
     }
+}
+
+pub async fn configure_database(config: &DatabaseSettings) -> PgPool {
+    let mut connection = PgConnection::connect(&config.connection_string_without_db())
+        .await
+        .expect("Failed to connect to Postgres");
+
+    connection
+        .execute(format!(r#"CREATE DATABASE "{}";"#, config.database_name).as_str())
+        .await
+        .expect("Failed to create database");
+
+    let connection_pool = PgPool::connect(&config.connection_string())
+        .await
+        .expect("Failed to connect to Postgres");
+
+    sqlx::migrate!("./migrations")
+        .run(&connection_pool)
+        .await
+        .expect("Failed to migrate the database");
+
+    connection_pool
 }
