@@ -14,6 +14,11 @@ pub async fn subscribe(
     State(state): State<AppState>,
     Form(form): Form<SubscribeForm>,
 ) -> StatusCode {
+    log::info!(
+        "Adding '{}' '{}' as a new subscriber.",
+        form.email,
+        form.name
+    );
     match sqlx::query!(
         r#"
             INSERT INTO subscriptions (id, email, name, subscribed_at)
@@ -27,9 +32,12 @@ pub async fn subscribe(
     .execute(&state.db_pool)
     .await
     {
-        Ok(_) => StatusCode::OK,
+        Ok(_) => {
+            log::info!("New subscriber details have been saved");
+            StatusCode::OK
+        }
         Err(e) => {
-            println!("->> Failed to execute query: {}", e);
+            log::error!("Failed to execute query: {:?}", e);
             StatusCode::INTERNAL_SERVER_ERROR
         }
     }

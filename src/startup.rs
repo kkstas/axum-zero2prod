@@ -3,6 +3,7 @@ use axum::{
     Router,
 };
 use sqlx::PgPool;
+use tower_http::trace::TraceLayer;
 
 use crate::routes::health_check;
 use crate::routes::subscribe;
@@ -13,9 +14,9 @@ pub struct AppState {
 }
 
 pub fn run(db_pool: PgPool) -> Router {
-    let state = AppState { db_pool };
     Router::new()
         .route("/health_check", get(health_check))
         .route("/subscriptions", post(subscribe))
-        .with_state(state)
+        .layer(TraceLayer::new_for_http())
+        .with_state(AppState { db_pool })
 }
