@@ -14,7 +14,7 @@ pub async fn subscribe(
     State(state): State<AppState>,
     Form(form): Form<SubscribeForm>,
 ) -> StatusCode {
-    log::info!(
+    tracing::info!(
         "Adding '{}' '{}' as a new subscriber.",
         form.email,
         form.name
@@ -33,11 +33,11 @@ pub async fn subscribe(
     .await
     {
         Ok(_) => {
-            log::info!("New subscriber details have been saved");
+            tracing::info!("New subscriber details have been saved");
             StatusCode::OK
         }
         Err(e) => {
-            log::error!("Failed to execute query: {:?}", e);
+            tracing::error!("Failed to execute query: {:?}", e);
             StatusCode::INTERNAL_SERVER_ERROR
         }
     }
