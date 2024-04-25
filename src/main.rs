@@ -1,12 +1,12 @@
 use axum_zero2prod::configuration::get_configuration;
 use axum_zero2prod::startup::run;
+use axum_zero2prod::telemetry::{get_subscriber, init_subscriber};
 use sqlx::PgPool;
 
 #[tokio::main]
 async fn main() -> Result<(), std::io::Error> {
-    tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::TRACE)
-        .init();
+    let subscriber = get_subscriber("axum-zero2prod".into(), "info".into(), std::io::stdout);
+    init_subscriber(subscriber);
 
     let configuration = get_configuration().expect("Failed to read configuration.");
     let address = format!("127.0.0.1:{}", configuration.application_port);

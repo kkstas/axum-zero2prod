@@ -10,16 +10,34 @@ use uuid::Uuid;
 
 use crate::startup::AppState;
 
+#[tracing::instrument(
+    name = "Adding a new subscriber",
+    skip(form, state),
+    fields(
+        request_id = %Uuid::new_v4(),
+        subscriber_email = %form.email,
+        subscriber_name = %form.name
+    )
+)]
 pub async fn subscribe(
     State(state): State<AppState>,
     Form(form): Form<SubscribeForm>,
 ) -> StatusCode {
-    tracing::info!(
-        "Adding '{}' '{}' as a new subscriber.",
-        form.email,
-        form.name
-    );
-    match sqlx::query!(
+    match insert_subscriber(form, state).await {
+        Ok(_) => StatusCode::OK,
+        Err(e) => {
+            tracing::error!("Failed to execute query: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        }
+    }
+}
+
+#[tracing::instrument(
+    name = "Saving new subscriber details in the database",
+    skip(form, state)
+)]
+pub async fn insert_subscriber(form: SubscribeForm, state: AppState) -> Result<(), sqlx::Error> {
+    sqlx::query!(
         r#"
             INSERT INTO subscriptions (id, email, name, subscribed_at)
             VALUES ($1, $2, $3, $4)
@@ -31,16 +49,11 @@ pub async fn subscribe(
     )
     .execute(&state.db_pool)
     .await
-    {
-        Ok(_) => {
-            tracing::info!("New subscriber details have been saved");
-            StatusCode::OK
-        }
-        Err(e) => {
-            tracing::error!("Failed to execute query: {:?}", e);
-            StatusCode::INTERNAL_SERVER_ERROR
-        }
-    }
+    .map_err(|e| {
+        tracing::error!("Failed to execute query: {:?}", e);
+        e
+    })?;
+    Ok(())
 }
 
 #[derive(Debug)]
