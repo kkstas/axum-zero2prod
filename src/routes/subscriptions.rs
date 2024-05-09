@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use uuid::Uuid;
 
+use crate::domain::{NewSubscriber, SubscriberName};
 use crate::startup::AppState;
 
 #[tracing::instrument(
@@ -23,7 +24,16 @@ pub async fn subscribe(
     State(state): State<AppState>,
     Form(form): Form<SubscribeForm>,
 ) -> StatusCode {
-    match insert_subscriber(form, state).await {
+    let name = match SubscriberName::parse(form.name) {
+        Ok(name) => name,
+        Err(_) => return StatusCode::BAD_REQUEST,
+    };
+
+    let new_subscriber = NewSubscriber {
+        email: form.email,
+        name,
+    };
+    match insert_subscriber(&new_subscriber, state).await {
         Ok(_) => StatusCode::OK,
         Err(e) => {
             tracing::error!("Failed to execute query: {:?}", e);
@@ -34,17 +44,20 @@ pub async fn subscribe(
 
 #[tracing::instrument(
     name = "Saving new subscriber details in the database",
-    skip(form, state)
+    skip(new_subscriber, state)
 )]
-pub async fn insert_subscriber(form: SubscribeForm, state: AppState) -> Result<(), sqlx::Error> {
+pub async fn insert_subscriber(
+    new_subscriber: &NewSubscriber,
+    state: AppState,
+) -> Result<(), sqlx::Error> {
     sqlx::query!(
         r#"
             INSERT INTO subscriptions (id, email, name, subscribed_at)
             VALUES ($1, $2, $3, $4)
         "#,
         Uuid::new_v4(),
-        form.email,
-        form.name,
+        new_subscriber.email,
+        new_subscriber.name.as_ref(),
         Utc::now()
     )
     .execute(&state.db_pool)
