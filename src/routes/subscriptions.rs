@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use uuid::Uuid;
 
-use crate::domain::{NewSubscriber, SubscriberEmail, SubscriberName};
+use crate::domain::NewSubscriber;
 use crate::startup::AppState;
 
 #[tracing::instrument(
@@ -24,16 +24,11 @@ pub async fn subscribe(
     State(state): State<AppState>,
     Form(form): Form<SubscribeForm>,
 ) -> StatusCode {
-    let name = match SubscriberName::parse(form.name) {
-        Ok(name) => name,
-        Err(_) => return StatusCode::BAD_REQUEST,
-    };
-    let email = match SubscriberEmail::parse(form.email) {
-        Ok(email) => email,
+    let new_subscriber = match form.try_into() {
+        Ok(subscriber) => subscriber,
         Err(_) => return StatusCode::BAD_REQUEST,
     };
 
-    let new_subscriber = NewSubscriber { email, name };
     match insert_subscriber(&new_subscriber, state).await {
         Ok(_) => StatusCode::OK,
         Err(e) => {
