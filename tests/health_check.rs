@@ -1,8 +1,11 @@
 use axum_zero2prod::configuration::{get_configuration, DatabaseSettings};
+use axum_zero2prod::domain::SubscriberEmail;
+use axum_zero2prod::email_client::EmailClient;
 use axum_zero2prod::startup::run;
 use axum_zero2prod::telemetry::{get_subscriber, init_subscriber};
+use fake::{Fake, Faker};
 use once_cell::sync::Lazy;
-use secrecy::ExposeSecret;
+use secrecy::{ExposeSecret, Secret};
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use uuid::Uuid;
 
@@ -35,7 +38,19 @@ async fn spawn_app() -> TestApp {
     let spawn_pool = db_pool.clone();
 
     let _ = tokio::spawn(async move {
-        axum::serve(listener, run(spawn_pool)).await.unwrap();
+        axum::serve(
+            listener,
+            run(
+                spawn_pool,
+                EmailClient::new(
+                    Faker.fake(),
+                    SubscriberEmail::parse("mailtrap@demomailtrap.com".to_string()).unwrap(),
+                    Secret::new(Faker.fake()),
+                ),
+            ),
+        )
+        .await
+        .unwrap();
     });
     TestApp {
         address: format!("http://127.0.0.1:{}", port),

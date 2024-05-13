@@ -1,4 +1,5 @@
 use axum_zero2prod::configuration::get_configuration;
+use axum_zero2prod::email_client::EmailClient;
 use axum_zero2prod::startup::run;
 use axum_zero2prod::telemetry::{get_subscriber, init_subscriber};
 use secrecy::ExposeSecret;
@@ -8,8 +9,18 @@ use sqlx::PgPool;
 async fn main() -> Result<(), std::io::Error> {
     let subscriber = get_subscriber("axum-zero2prod".into(), "info".into(), std::io::stdout);
     init_subscriber(subscriber);
-
     let configuration = get_configuration().expect("Failed to read configuration.");
+    let sender_email = configuration
+        .email_client
+        .sender()
+        .expect("Invalid sender email address.");
+
+    let email_client = EmailClient::new(
+        configuration.email_client.base_url,
+        sender_email,
+        configuration.email_client.authorization_token,
+    );
+
     let address = format!(
         "{}:{}",
         configuration.application.host, configuration.application.port
@@ -21,6 +32,6 @@ async fn main() -> Result<(), std::io::Error> {
         .await
         .expect("Failed to bind a listener to a port");
 
-    axum::serve(listener, run(db_pool)).await?;
+    axum::serve(listener, run(db_pool, email_client)).await?;
     Ok(())
 }
