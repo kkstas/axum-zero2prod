@@ -12,3 +12,4 @@ email_client:
   base_url: 'https://send.api.mailtrap.io/api/send'
   sender_email: 'mailtrap@demomailtrap.com'
   authorization_token: 'asdf'
+  timeout_milliseconds: 1000

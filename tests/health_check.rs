@@ -46,6 +46,7 @@ async fn spawn_app() -> TestApp {
                     Faker.fake(),
                     SubscriberEmail::parse("mailtrap@demomailtrap.com".to_string()).unwrap(),
                     Secret::new(Faker.fake()),
+                    std::time::Duration::from_millis(200),
                 ),
             ),
         )
