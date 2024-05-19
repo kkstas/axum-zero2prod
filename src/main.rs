@@ -35,6 +35,6 @@ async fn main() -> Result<(), std::io::Error> {
         .await
         .expect("Failed to bind a listener to a port");
 
-    axum::serve(listener, run(db_pool, email_client)).await?;
+    run(db_pool, email_client, listener).await?;
     Ok(())
 }

@@ -38,20 +38,17 @@ pub async fn spawn_app() -> TestApp {
     let spawn_pool = db_pool.clone();
 
     let _ = tokio::spawn(async move {
-        axum::serve(
-            listener,
-            run(
-                spawn_pool,
-                EmailClient::new(
-                    Faker.fake(),
-                    SubscriberEmail::parse("mailtrap@demomailtrap.com".to_string()).unwrap(),
-                    Secret::new(Faker.fake()),
-                    std::time::Duration::from_millis(200),
-                ),
+        run(
+            spawn_pool,
+            EmailClient::new(
+                Faker.fake(),
+                SubscriberEmail::parse("mailtrap@demomailtrap.com".to_string()).unwrap(),
+                Secret::new(Faker.fake()),
+                std::time::Duration::from_millis(200),
             ),
+            listener,
         )
         .await
-        .unwrap();
     });
     TestApp {
         address: format!("http://127.0.0.1:{}", port),
