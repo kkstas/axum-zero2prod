@@ -2,8 +2,7 @@ use axum_zero2prod::configuration::get_configuration;
 use axum_zero2prod::email_client::EmailClient;
 use axum_zero2prod::startup::run;
 use axum_zero2prod::telemetry::{get_subscriber, init_subscriber};
-use secrecy::ExposeSecret;
-use sqlx::PgPool;
+use sqlx::postgres::PgPoolOptions;
 
 #[tokio::main]
 async fn main() -> Result<(), std::io::Error> {
@@ -28,8 +27,7 @@ async fn main() -> Result<(), std::io::Error> {
         "{}:{}",
         configuration.application.host, configuration.application.port
     );
-    let db_pool = PgPool::connect_lazy(&configuration.database.connection_string().expose_secret())
-        .expect("Failed to connect to Postgres");
+    let db_pool = PgPoolOptions::new().connect_lazy_with(configuration.database.with_db());
 
     let listener = tokio::net::TcpListener::bind(address)
         .await
