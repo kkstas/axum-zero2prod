@@ -1,11 +1,7 @@
 use axum_zero2prod::configuration::{get_configuration, DatabaseSettings};
-use axum_zero2prod::domain::SubscriberEmail;
-use axum_zero2prod::email_client::EmailClient;
-use axum_zero2prod::startup::run;
+use axum_zero2prod::startup::{get_connection_pool, Application};
 use axum_zero2prod::telemetry::{get_subscriber, init_subscriber};
-use fake::{Fake, Faker};
 use once_cell::sync::Lazy;
-use secrecy::Secret;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use uuid::Uuid;
 
@@ -29,30 +25,25 @@ pub struct TestApp {
 pub async fn spawn_app() -> TestApp {
     Lazy::force(&TRACING);
 
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let port = listener.local_addr().unwrap().port();
-
-    let mut configuration = get_configuration().expect("Failed to read configuration");
-    configuration.database.database_name = Uuid::new_v4().to_string();
-    let db_pool = configure_database(&configuration.database).await;
-    let spawn_pool = db_pool.clone();
-
-    let _ = tokio::spawn(async move {
-        run(
-            spawn_pool,
-            EmailClient::new(
-                Faker.fake(),
-                SubscriberEmail::parse("mailtrap@demomailtrap.com".to_string()).unwrap(),
-                Secret::new(Faker.fake()),
-                std::time::Duration::from_millis(200),
-            ),
-            listener,
-        )
+    let configuration = {
+        // Randomise configuration to ensure test isolation
+        let mut c = get_configuration().expect("Failed to read configuration");
+        // Use a different database for each test case
+        c.database.database_name = Uuid::new_v4().to_string();
+        // Use a random OS port
+        c.application.port = 0;
+        c
+    };
+    configure_database(&configuration.database).await;
+    let application = Application::build(configuration.clone())
         .await
-    });
+        .expect("Failed to build application.");
+    let address = format!("http://127.0.0.1:{}", application.port());
+    let _ = tokio::spawn(application.run_until_stopped());
+
     TestApp {
-        address: format!("http://127.0.0.1:{}", port),
-        db_pool,
+        address,
+        db_pool: get_connection_pool(&configuration.database),
     }
 }
 
